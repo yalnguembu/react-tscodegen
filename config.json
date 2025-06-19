@@ -1,0 +1,127 @@
+{
+  "spec": {
+    "default": "./api-specification.yaml",
+    "description": "Path to the OpenAPI specification file (YAML or JSON)"
+  },
+  "output": {
+    "default": "./frontend/src",
+    "description": "Base output directory for all generated files"
+  },
+  "paths": {
+    "types": {
+      "default": "types/api",
+      "description": "Output directory for generated TypeScript types relative to output base path"
+    },
+    "schemas": {
+      "default": "schemas",
+      "description": "Output directory for generated Zod schemas relative to output base path"
+    },
+    "services": {
+      "default": "services/api", 
+      "description": "Output directory for generated API service classes relative to output base path"
+    },
+    "hooks": {
+      "default": "hooks/api",
+      "description": "Output directory for generated React Query hooks relative to output base path"
+    },
+    "components": {
+      "default": "components/api",
+      "description": "Base directory for generated React components relative to output base path"
+    },
+    "views": {
+      "default": "views/api",
+      "description": "Directory for generated view helper classes relative to output base path"
+    }
+  },
+  "components": {
+    "forms": {
+      "default": "forms",
+      "description": "Subdirectory for form components"
+    },
+    "lists": {
+      "default": "lists",
+      "description": "Subdirectory for list components"
+    }
+  },
+  "templates": {
+    "hook": {
+      "path": "src/templates/hook.template.ts",
+      "extension": ".hook.ts",
+      "indexImportPattern": "export * from './{fileName}';",
+      "importStatements": [
+        "import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';",
+        "import { {serviceName} } from '../services/api';"
+      ]
+    },
+    "service": {
+      "path": "src/templates/service.template.ts",
+      "extension": ".service.ts",
+      "indexImportPattern": "export * from './{fileName}';",
+      "importStatements": [
+        "import { AxiosInstance } from 'axios';",
+        "import { httpClient } from '../utils/http-client';"
+      ]
+    },
+    "form": {
+      "path": "src/templates/form.template.ts",
+      "extension": ".form.tsx",
+      "indexImportPattern": "export * from './{fileName}';",
+      "importStatements": [
+        "import React from 'react';",
+        "import { useForm } from 'react-hook-form';",
+        "import { zodResolver } from '@hookform/resolvers/zod';",
+        "import { z } from 'zod';",
+        "import { {schemaName}Schema } from '../../schemas';"
+      ]
+    },
+    "list": {
+      "path": "src/templates/list.template.ts",
+      "extension": ".list.tsx",
+      "indexImportPattern": "export * from './{fileName}';",
+      "importStatements": [
+        "import React from 'react';",
+        "import { {typeName} } from '../../types/api';"
+      ]
+    },
+    "view": {
+      "path": "src/templates/view.template.ts",
+      "extension": ".view.ts",
+      "indexImportPattern": "export * from './{fileName}';",
+      "importStatements": [
+        "import { {typeName} } from '../types/api';"
+      ]
+    }
+  },
+  "options": {
+    "typesGeneration": {
+      "enumAsUnion": true,
+      "generateInterfaces": true,
+      "includeDescriptions": true
+    },
+    "schemasGeneration": {
+      "addTypeAnnotations": true,
+      "generateSchemaExports": true
+    },
+    "servicesGeneration": {
+      "useAxios": true,
+      "includeComments": true,
+      "addTypeAnnotations": true
+    },
+    "hooksGeneration": {
+      "useReactQuery": true,
+      "includeInfiniteQueries": true,
+      "includeMutations": true,
+      "servicesInputPath": null
+    },
+    "componentsGeneration": {
+      "useReactHookForm": true,
+      "generateForms": true,
+      "generateLists": true,
+      "includeFormValidation": true
+    },
+    "viewsGeneration": {
+      "generateHelpers": true,
+      "includeFormatters": true
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "name": "react-tscodegen",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "React typescript Code generator from OpenAPI specifications",
+  "main": "dist/index.js",
+  "bin": {
+    "react-tscodegen": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && tsc -p tsconfig.root.json",
+    "bundle": "node ./scripts/bundle.js",
+    "build:prod": "npm run build && npm run bundle",
+    "generate": "node --experimental-specifier-resolution=node ./dist/index.js",
+    "start": "node --experimental-specifier-resolution=node ./generator.js",
+    "version": "node --experimental-specifier-resolution=node ./dist/index.js version",
+    "release:patch": "node --experimental-specifier-resolution=node ./scripts/release.js patch",
+    "release:minor": "node --experimental-specifier-resolution=node ./scripts/release.js minor",
+    "release:major": "node --experimental-specifier-resolution=node ./scripts/release.js major",
+    "prerelease": "node --experimental-specifier-resolution=node ./scripts/pre-release-check.js",
+    "github-release": "node --experimental-specifier-resolution=node ./scripts/github-release.js"
+  },
+  "dependencies": {
+    "commander": "^10.0.1",
+    "js-yaml": "^4.1.0",
+    "yargs": "^17.7.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.10.5",
+    "@types/yargs": "^17.0.32",
+    "esbuild": "^0.19.12",
+    "typescript": "^5.3.3"
+  }
+}

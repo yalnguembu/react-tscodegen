@@ -19,7 +19,7 @@ export class HooksGenerator extends BaseGenerator {
       this._servicesCode = servicesCode;
     }
   }
-    generate(): Map<string, string> {
+  generate(): Map<string, string> {
     // Get config options
     const useReactQuery = this.config.options?.hooksGeneration?.useReactQuery !== false;
     const includeInfiniteQueries = this.config.options?.hooksGeneration?.includeInfiniteQueries !== false;
@@ -32,6 +32,11 @@ export class HooksGenerator extends BaseGenerator {
     // If no services were provided, try to load them from the services directory
     if (this._servicesCode.size === 0) {
       this.loadServicesFromFiles();
+      
+      // If still no services found, generate them directly from the OpenAPI spec
+      if (this._servicesCode.size === 0) {
+        this.generateServicesFromSpec();
+      }
     }
     
     // Generate hooks for each service
@@ -184,13 +189,23 @@ export class HooksGenerator extends BaseGenerator {
         hookFunctions += this.generateMutationHook(resourceName, serviceLower, methodName, params);
       }
     });
-    
-    const templatePath = path.resolve(__dirname, '../../', this.config.templates?.hook || '../templates/hook.template.ts');
-    let hookTemplate = '';
-    
-    try {
+      try {
+      const templateHookConfig = this.config.templates?.hook;
+      let templatePath;
+      
+      if (typeof templateHookConfig === 'string') {
+        // If it's a string, use it directly as path
+        templatePath = path.resolve(__dirname, '../../', templateHookConfig);
+      } else if (templateHookConfig && typeof templateHookConfig === 'object' && templateHookConfig.path) {
+        // If it's an object with a path property, use that
+        templatePath = path.resolve(__dirname, '../../', templateHookConfig.path);
+      } else {
+        // Default template path
+        templatePath = path.resolve(__dirname, '../../templates/hook.template.ts');
+      }
+      
       if (fs.existsSync(templatePath)) {
-        hookTemplate = fs.readFileSync(templatePath, 'utf8');
+        const hookTemplate = fs.readFileSync(templatePath, 'utf8');
         return hookTemplate
           .replace('{{imports}}', hookImports)
           .replace('{{hookFunctions}}', hookFunctions);
@@ -261,5 +276,82 @@ export function ${hookName}() {
 }`;
     
     return mutationTemplate;
+  }
+  
+  /**
+   * Generate service code directly from the OpenAPI spec if no service files are found
+   */  private generateServicesFromSpec(): void {
+    // Group endpoints by tag to create services
+    const serviceGroups: Record<string, any[]> = {};
+
+    // Process OpenAPI paths
+    Object.entries(this.spec.paths || {}).forEach(([path, methods]) => {
+      Object.entries(methods || {}).forEach(([method, endpoint]: [string, any]) => {
+        const tag = endpoint.tags?.[0] || 'Default';
+        const serviceName = `${tag}Service`;
+
+        if (!serviceGroups[serviceName]) {
+          serviceGroups[serviceName] = [];
+        }
+
+        serviceGroups[serviceName].push({
+          path,
+          method: method.toUpperCase(),
+          endpoint,
+          operationId: this.generateOperationId(method, path),
+        });
+      });
+    });
+
+    // Generate dummy service code for each service group
+    Object.entries(serviceGroups).forEach(([serviceName, endpoints]) => {
+      let serviceCode = `class ${serviceName} {\n`;
+      
+      endpoints.forEach(({ operationId, path, method }) => {
+        // Generate a simple method signature based on the operationId and path
+        serviceCode += `  async ${operationId}(data) {\n`;
+        serviceCode += `    // ${method} ${path}\n`;
+        serviceCode += `    return { data };\n`;
+        serviceCode += `  }\n\n`;
+      });
+      
+      serviceCode += `}\n\n`;
+      serviceCode += `export const ${serviceName.charAt(0).toLowerCase() + serviceName.slice(1)} = new ${serviceName}();\n`;
+      
+      this._servicesCode.set(serviceName, serviceCode);
+    });
+    
+    console.log(`Generated ${Object.keys(serviceGroups).length} service stubs from OpenAPI spec for hook generation`);
+  }
+  
+  private generateOperationId(method: string, path: string): string {
+    // Convert path parameters from {param} to ByParam
+    const pathFormatted = path.replace(/{([^}]+)}/g, (_, param) => 
+      'By' + param.charAt(0).toUpperCase() + param.slice(1)
+    );
+    
+    // Extract resource name from path
+    const parts = pathFormatted.split('/').filter(p => p.length > 0);
+    const resourceName = parts.length > 0 ? parts[parts.length - 1] : 'resource';
+    
+    // Generate operation based on method and resource
+    switch (method.toLowerCase()) {
+      case 'get':
+        // If path ends with an ID parameter, it's a "get by id" operation
+        if (path.match(/\/[^/]*{[^}]+}$/)) {
+          return `get${resourceName.charAt(0).toUpperCase() + resourceName.slice(1, -1) || resourceName}`;
+        }
+        return `list${resourceName.charAt(0).toUpperCase() + resourceName.slice(0, -1) || resourceName}`;
+      case 'post':
+        return `create${resourceName.charAt(0).toUpperCase() + resourceName.slice(0, -1) || resourceName}`;
+      case 'put':
+        return `update${resourceName.charAt(0).toUpperCase() + resourceName.slice(0, -1) || resourceName}`;
+      case 'patch':
+        return `patch${resourceName.charAt(0).toUpperCase() + resourceName.slice(0, -1) || resourceName}`;
+      case 'delete':
+        return `delete${resourceName.charAt(0).toUpperCase() + resourceName.slice(0, -1) || resourceName}`;
+      default:
+        return `${method.toLowerCase()}${resourceName.charAt(0).toUpperCase() + resourceName.slice(1)}`;
+    }
   }
 }

@@ -70,6 +70,7 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 export interface GeneratorOptions {
   spec?: string;
   output?: string;
+  outDir?: string;  // Added to support both parameter names
   hooks?: boolean | string;
   services?: boolean | string;
   components?: boolean | string;
@@ -81,4 +82,5 @@ export interface GeneratorOptions {
   input?: string; // Path to input files (for hooks generator)
   forms?: boolean; // Flag to generate form components 
   list?: boolean; // Flag to generate list components
+  fromAll?: boolean; // Flag to indicate that the generator is being called from generateAll
 }

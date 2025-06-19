@@ -1,0 +1,25 @@
+{
+  "outputDir": "./custom-output",
+  "apiSpec": "./api-specification.yaml",
+  "paths": {
+    "components": "custom-components",
+    "services": "custom-services"
+  },
+  "templates": {
+    "form": {
+      "template": "./custom-templates/form.template.ts",
+      "metadata": "./custom-templates/form.metadata.ts"
+    },
+    "list": {
+      "template": "./custom-templates/list.template.ts",
+      "metadata": "./custom-templates/list.metadata.ts"
+    }
+  },
+  "options": {
+    "componentsGeneration": {
+      "useReactHookForm": true,
+      "generateForms": true,
+      "generateLists": true
+    }
+  }
+}

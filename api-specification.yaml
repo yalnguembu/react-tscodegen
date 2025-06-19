@@ -1,0 +1,916 @@
+openapi: 3.0.3
+info:
+  title: "Federation Licensing & Management Platform API"
+  description: |
+    Comprehensive API contract for the Federation Licensing & Management Platform.
+    - **Architecture**: Laravel (backend) with React (frontend)
+    - **Authentication**: Cookie-based sessions via Laravel Sanctum
+    - **Versioning**: All endpoints prefixed with `/api/v1`
+    - **Database**: Leverages MySQL views and stored procedures for optimal performance
+  version: "1.0.0"
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "Local Development Server"
+  - url: "https://api.yourfederation.com/api/v1"
+    description: "Production Server"
+
+tags:
+  - name: "Authentication"
+    description: "User login, logout, and session management"
+  - name: "SystemConfiguration"
+    description: "System-wide settings, document types, fees, checklists"
+  - name: "UsersAndRoles"
+    description: "System users, roles, and permissions (RBAC)"
+  - name: "CoreEntities"
+    description: "Clubs, Leagues, Teams, Seasons, and Categories"
+  - name: "Persons"
+    description: "Individual profiles (Players, Coaches, Officials)"
+  - name: "LicenseRequests"
+    description: "License application submission and review workflow"
+  - name: "Licenses"
+    description: "Issued licenses and their lifecycle management"
+  - name: "DataManagement"
+    description: "File/folder management and bulk data imports"
+  - name: "Reporting"
+    description: "Analytics and report generation"
+
+paths:
+  # Authentication Endpoints
+  /login:
+    post:
+      tags: [Authentication]
+      summary: "User Login"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+              required: [email, password]
+      responses:
+        "200":
+          description: "Login successful"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+
+  /logout:
+    post:
+      tags: [Authentication]
+      summary: "User Logout"
+      responses:
+        "204":
+          description: "Logout successful"
+
+  /user:
+    get:
+      tags: [Authentication]
+      summary: "Get Authenticated User"
+      responses:
+        "200":
+          description: "Current user data"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # System Configuration
+  /seasons:
+    get:
+      tags: [SystemConfiguration]
+      summary: "List Seasons"
+      responses:
+        "200":
+          description: "Paginated list of seasons"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedSeasons"
+    post:
+      tags: [SystemConfiguration]
+      summary: "Create Season"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeasonInput"
+      responses:
+        "201":
+          description: "Season created successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Season"
+
+  /categories:
+    get:
+      tags: [SystemConfiguration]
+      summary: "List Categories"
+      responses:
+        "200":
+          description: "Paginated list of categories"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCategories"
+
+  /document-types:
+    get:
+      tags: [SystemConfiguration]
+      summary: "List Document Types"
+      responses:
+        "200":
+          description: "Paginated list of document types"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedDocumentTypes"
+
+  /license-checklists:
+    get:
+      tags: [SystemConfiguration]
+      summary: "List License Checklists"
+      parameters:
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+        - name: entity_type
+          in: query
+          schema:
+            type: string
+            enum: [player, coach, official]
+        - name: season_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Filtered license checklists"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedLicenseChecklists"
+
+  # Enhanced endpoint using stored procedure
+  /license-requirements:
+    get:
+      tags: [SystemConfiguration]
+      summary: "Get Applicable License Requirements"
+      description: "Uses sp_get_applicable_checklist stored procedure for intelligent requirement lookup"
+      parameters:
+        - name: category_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: entity_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [player, coach, official]
+        - name: season_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Required documents for the specific context"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentRequirement"
+
+  # Core Entities
+  /clubs:
+    get:
+      tags: [CoreEntities]
+      summary: "List Clubs"
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: city
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "Paginated list of clubs"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedClubs"
+    post:
+      tags: [CoreEntities]
+      summary: "Create Club"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClubInput"
+      responses:
+        "201":
+          description: "Club created successfully"
+
+  /clubs/{id}:
+    get:
+      tags: [CoreEntities]
+      summary: "Get Club Details"
+      parameters:
+        - $ref: "#/components/parameters/IdParameter"
+      responses:
+        "200":
+          description: "Club details with staff and teams"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClubDetails"
+
+  /clubs/{id}/staff:
+    get:
+      tags: [CoreEntities]
+      summary: "List Club Staff"
+      parameters:
+        - $ref: "#/components/parameters/IdParameter"
+      responses:
+        "200":
+          description: "Club staff members"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClubStaff"
+
+  # Persons Management
+  /persons:
+    get:
+      tags: [Persons]
+      summary: "List Persons"
+      description: "Uses v_person_details view for comprehensive data"
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [player, coach, official]
+        - name: club_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Paginated list of persons with role information"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedPersonDetails"
+    post:
+      tags: [Persons]
+      summary: "Create Person"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PersonInput"
+      responses:
+        "201":
+          description: "Person created successfully"
+
+  /persons/{id}:
+    get:
+      tags: [Persons]
+      summary: "Get Person Details"
+      parameters:
+        - $ref: "#/components/parameters/IdParameter"
+      responses:
+        "200":
+          description: "Complete person profile"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PersonDetailsView"
+
+  /persons/{id}/profiles:
+    post:
+      tags: [Persons]
+      summary: "Add Person Profile"
+      description: "Add player, coach, or official profile to existing person"
+      parameters:
+        - $ref: "#/components/parameters/IdParameter"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInput"
+      responses:
+        "201":
+          description: "Profile added successfully"
+
+  # License Requests
+  /license-requests:
+    get:
+      tags: [LicenseRequests]
+      summary: "List License Requests"
+      description: "Uses v_license_request_details view"
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, pending, approved, rejected, correction_needed]
+        - name: club_id
+          in: query
+          schema:
+            type: integer
+        - name: season_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Paginated license requests with current status"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedLicenseRequestDetails"
+    post:
+      tags: [LicenseRequests]
+      summary: "Create License Request"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LicenseRequestInput"
+      responses:
+        "201":
+          description: "License request created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LicenseRequestDetailsView"
+
+  /license-requests/{id}/documents:
+    post:
+      tags: [LicenseRequests]
+      summary: "Upload Request Documents"
+      parameters:
+        - $ref: "#/components/parameters/IdParameter"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                document_type_id:
+                  type: integer
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: "Document uploaded successfully"
+
+  /license-requests/{id}/status:
+    put:
+      tags: [LicenseRequests]
+      summary: "Update Request Status"
+      parameters:
+        - $ref: "#/components/parameters/IdParameter"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [approved, rejected, correction_needed]
+                notes:
+                  type: string
+              required: [status]
+      responses:
+        "200":
+          description: "Status updated successfully"
+
+  # Licenses
+  /licenses/active:
+    get:
+      tags: [Licenses]
+      summary: "List Active Licenses"
+      description: "Uses v_active_licenses view"
+      responses:
+        "200":
+          description: "Active licenses with full context"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedActiveLicenses"
+
+  /licenses/{id}/download:
+    get:
+      tags: [Licenses]
+      summary: "Download License Document"
+      parameters:
+        - $ref: "#/components/parameters/IdParameter"
+      responses:
+        "200":
+          description: "License PDF document"
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  # Data Management
+  /folders/{id}/contents:
+    get:
+      tags: [DataManagement]
+      summary: "Get Folder Contents"
+      description: "Uses sp_get_folder_contents stored procedure"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: "Folder contents (subfolders and files)"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  subfolders:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Folder"
+                  files:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/File"
+
+  /data-imports:
+    post:
+      tags: [DataManagement]
+      summary: "Import Bulk Data"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                import_type:
+                  type: string
+                  enum: [persons, clubs]
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "202":
+          description: "Import job queued"
+
+  # Reporting (Enhanced)
+  /reports/dashboard:
+    get:
+      tags: [Reporting]
+      summary: "Get Dashboard Statistics"
+      responses:
+        "200":
+          description: "Key metrics and statistics"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /reports/licenses:
+    get:
+      tags: [Reporting]
+      summary: "Generate License Report"
+      parameters:
+        - name: season_id
+          in: query
+          schema:
+            type: integer
+        - name: category_id
+          in: query
+          schema:
+            type: integer
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [json, csv, pdf]
+            default: json
+      responses:
+        "200":
+          description: "License report in requested format"
+
+components:
+  parameters:
+    IdParameter:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  responses:
+    ValidationError:
+      description: "Validation failed"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+
+    Unauthorized:
+      description: "Authentication required"
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Unauthenticated"
+
+  schemas:
+    # Core Entities
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        full_name: { type: string }
+        email: { type: string, format: email }
+        status: { type: string, enum: [active, inactive, suspended] }
+        roles: 
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+
+    Role:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        display_name: { type: string }
+        permissions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Permission"
+
+    Permission:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        display_name: { type: string }
+        permission_group: { type: string }
+
+    Season:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+        status: { type: string, enum: [draft, upcoming, current, paused, completed] }
+
+    Category:
+      type: object
+      properties:
+        id: { type: integer }
+        label: { type: string }
+        code: { type: string }
+        gender: { type: string, enum: [m, f] }
+        status: { type: string, enum: [active, inactive] }
+
+    Club:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        code: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        city: { type: string }
+        tax_id: { type: string }
+
+    ClubDetails:
+      allOf:
+        - $ref: "#/components/schemas/Club"
+        - type: object
+          properties:
+            staff:
+              type: array
+              items:
+                $ref: "#/components/schemas/ClubStaff"
+            teams:
+              type: array
+              items:
+                $ref: "#/components/schemas/TeamDetailsView"
+
+    ClubStaff:
+      type: object
+      properties:
+        id: { type: integer }
+        person_name: { type: string }
+        role: { type: string }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date, nullable: true }
+        status: { type: string, enum: [active, ended] }
+        is_primary_contact: { type: boolean }
+
+    # View-based schemas
+    PersonDetailsView:
+      type: object
+      properties:
+        person_id: { type: integer }
+        full_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        birth_date: { type: string, format: date }
+        birth_place: { type: string }
+        nationality: { type: string }
+        person_status: { type: string }
+        player_id: { type: integer, nullable: true }
+        coach_id: { type: integer, nullable: true }
+        official_id: { type: integer, nullable: true }
+
+    TeamDetailsView:
+      type: object
+      properties:
+        team_id: { type: integer }
+        team_name: { type: string }
+        team_status: { type: string }
+        club_id: { type: integer }
+        club_name: { type: string }
+        league_id: { type: integer }
+        league_name: { type: string }
+        category_id: { type: integer }
+        category_label: { type: string }
+        category_gender: { type: string, enum: [m, f] }
+
+    LicenseRequestDetailsView:
+      type: object
+      properties:
+        request_id: { type: integer }
+        entity_type: { type: string, enum: [player, coach, official] }
+        entity_id: { type: integer }
+        season_id: { type: integer }
+        season_name: { type: string }
+        category_id: { type: integer }
+        category_label: { type: string }
+        person_id: { type: integer }
+        person_name: { type: string }
+        club_id: { type: integer, nullable: true }
+        club_name: { type: string, nullable: true }
+        request_date: { type: string, format: date-time }
+        current_status: { type: string }
+        last_status_change: { type: string, format: date-time }
+
+    ActiveLicenseView:
+      type: object
+      properties:
+        license_id: { type: integer }
+        license_number: { type: string }
+        issue_date: { type: string, format: date }
+        expiry_date: { type: string, format: date }
+        person_id: { type: integer }
+        person_name: { type: string }
+        entity_type: { type: string }
+        club_name: { type: string, nullable: true }
+        category_label: { type: string }
+        season_name: { type: string }
+
+    # Input schemas
+    SeasonInput:
+      type: object
+      properties:
+        name: { type: string }
+        start_date: { type: string, format: date }
+        end_date: { type: string, format: date }
+        status: { type: string, enum: [draft, upcoming, current, paused, completed] }
+      required: [name, start_date, end_date]
+
+    ClubInput:
+      type: object
+      properties:
+        name: { type: string }
+        code: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        city: { type: string }
+        tax_id: { type: string }
+        registration_number: { type: string }
+      required: [name, code, email, phone, city, tax_id, registration_number]
+
+    PersonInput:
+      type: object
+      properties:
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        birth_date: { type: string, format: date }
+        birth_place: { type: string }
+        nationality: { type: string }
+      required: [first_name, last_name, email, birth_date, birth_place]
+
+    ProfileInput:
+      type: object
+      properties:
+        profile_type: { type: string, enum: [player, coach, official] }
+        additional_data: { type: object }
+      required: [profile_type]
+
+    LicenseRequestInput:
+      type: object
+      properties:
+        season_id: { type: integer }
+        category_id: { type: integer }
+        entity_type: { type: string, enum: [player, coach, official] }
+        entity_id: { type: integer }
+        club_id: { type: integer, nullable: true }
+      required: [season_id, category_id, entity_type, entity_id]
+
+    DocumentRequirement:
+      type: object
+      properties:
+        document_type_id: { type: integer }
+        display_name: { type: string }
+        description: { type: string }
+        is_required: { type: boolean }
+        notes: { type: string, nullable: true }
+
+    DashboardStats:
+      type: object
+      properties:
+        total_persons: { type: integer }
+        active_licenses: { type: integer }
+        pending_requests: { type: integer }
+        clubs_count: { type: integer }
+        current_season: { $ref: "#/components/schemas/Season" }
+
+    # File management
+    File:
+      type: object
+      properties:
+        id: { type: integer }
+        collection_name: { type: string }
+        file_name: { type: string }
+        mime_type: { type: string }
+        size_bytes: { type: integer }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Folder:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+
+    # Pagination wrapper
+    Pagination:
+      type: object
+      properties:
+        current_page: { type: integer }
+        first_page_url: { type: string, format: uri }
+        from: { type: integer }
+        last_page: { type: integer }
+        last_page_url: { type: string, format: uri }
+        next_page_url: { type: string, format: uri, nullable: true }
+        path: { type: string, format: uri }
+        per_page: { type: integer }
+        prev_page_url: { type: string, format: uri, nullable: true }
+        to: { type: integer }
+        total: { type: integer }
+
+    # Paginated responses
+    PaginatedSeasons:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Season"
+
+    PaginatedCategories:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Category"
+
+    PaginatedDocumentTypes:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  display_name: { type: string }
+                  description: { type: string }
+                  status: { type: string }
+
+    PaginatedLicenseChecklists:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                type: object
+                properties:
+                  id: { type: integer }
+                  name: { type: string }
+                  category_label: { type: string }
+                  entity_type: { type: string }
+                  season_name: { type: string, nullable: true }
+
+    PaginatedClubs:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/Club"
+
+    PaginatedPersonDetails:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/PersonDetailsView"
+
+    PaginatedLicenseRequestDetails:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/LicenseRequestDetailsView"
+
+    PaginatedActiveLicenses:
+      allOf:
+        - $ref: "#/components/schemas/Pagination"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/ActiveLicenseView"

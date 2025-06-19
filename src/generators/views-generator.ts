@@ -1,6 +1,6 @@
 import { BaseGenerator } from '../base-generator.js';
 import { FileSystemAPI } from '../file-system.js';
-import { SchemaDefinition } from '../types.js';
+import { SchemaDefinition, SchemaReference } from '../types.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -12,12 +12,32 @@ const __dirname = dirname(__filename);
 
 export class ViewsGenerator extends BaseGenerator {
   private _generatedViews: Map<string, string> = new Map();
-  
-  generate(): Map<string, string> {
+    generate(): Map<string, string> {
+    // Process paths to identify schemas used in GET responses
+    const getResponseSchemas = new Set<string>();
+
+    // Scan all paths to identify schemas used in GET responses
+    Object.entries(this.spec.paths || {}).forEach(([path, methods]) => {
+      Object.entries(methods || {}).forEach(([method, endpoint]) => {
+        if (method.toUpperCase() === 'GET') {
+          // Process GET responses
+          const successResponse = endpoint.responses?.['200'] || endpoint.responses?.['201'];
+          if (successResponse?.content?.['application/json']?.schema) {
+            const schema = successResponse.content['application/json'].schema;            if ('$ref' in schema) {
+              const schemaName = this.extractNameFromRef(schema.$ref);
+              getResponseSchemas.add(schemaName);
+            }
+          }
+        }
+      });
+    });
+
+    // Generate views only for schemas used in GET responses
     Object.entries(this.spec.components.schemas).forEach(([name, schema]) => {
       if ((schema as SchemaDefinition).type === 'object' && 
           !name.endsWith('View') && 
-          !name.includes('Error')) {
+          !name.includes('Error') &&
+          getResponseSchemas.has(name)) {
         const viewCode = this.generateViewClass(name, schema as SchemaDefinition);
         this._generatedViews.set(`${name}View`, viewCode);
       }

@@ -1,83 +1,187 @@
 import { BaseGenerator } from './base-generator.js';
 import { FileSystemAPI } from './file-system.js';
-import { TypesGenerator } from './generators/types-generator.js';
-import { SchemasGenerator } from './generators/schemas-generator.js';
-import { ServicesGenerator } from './generators/services-generator.js';
-import { HooksGenerator } from './generators/hooks-generator.js';
-import { ComponentsGenerator } from './generators/components-generator.js';
-import { ViewsGenerator } from './generators/views-generator.js';
 import { GeneratorOptions, OpenApiSpec } from './types.js';
+import { GeneratorFactory } from './core/abstract-factory.js';
+import { ConcreteGeneratorFactory } from './core/concrete-factory.js';
+import { GenerationStrategy, SequentialGenerationStrategy, GenerationResult } from './core/generation-strategy.js';
+import { ServiceLocator } from './core/dependency-injection.js';
 
 export class ApiContractBuilder extends BaseGenerator {
-  private typesGenerator: TypesGenerator;
-  private schemasGenerator: SchemasGenerator;
-  private servicesGenerator: ServicesGenerator;
-  private hooksGenerator: HooksGenerator;
-  private componentsGenerator: ComponentsGenerator;
-  private viewsGenerator: ViewsGenerator;
-
+  private generatorFactory: GeneratorFactory;
+  private generators: Map<string, BaseGenerator> = new Map();
+  private generationStrategy: GenerationStrategy;
   private options: GeneratorOptions;
-  
+  private verbose: boolean = false;
+  private serviceLocator: ServiceLocator;  
   constructor(spec: OpenApiSpec, basePath: string = './frontend/src', options: GeneratorOptions = {}) {
     super(spec, basePath);
     this.options = options;
+    this.serviceLocator = ServiceLocator.getInstance();
+    this.generationStrategy = this.serviceLocator.getGenerationStrategy();
     
-    // Initialize all generators
-    this.typesGenerator = new TypesGenerator(spec, basePath);
-    this.schemasGenerator = new SchemasGenerator(spec, basePath);
-    this.servicesGenerator = new ServicesGenerator(spec, basePath);
-    this.viewsGenerator = new ViewsGenerator(spec, basePath);
-    
-    // These generators depend on other generators' output
-    this.hooksGenerator = new HooksGenerator(spec, basePath);
-    this.componentsGenerator = new ComponentsGenerator(spec, basePath);
-  }  
-  generate(): Map<string, string> {
-    // Generate TypeScript types and Zod schemas first as they are dependencies
-    const types = this.typesGenerator.generate();
-    const schemas = this.schemasGenerator.generate();
-    
-    // Generate services based on endpoints
-    const services = this.servicesGenerator.generate();
-    
-    // Generate view objects
-    const views = this.viewsGenerator.generate();
+    // Initialize factory and create generators
+    this.generatorFactory = new ConcreteGeneratorFactory(spec, basePath, options);
+    this.generators = this.generatorFactory.createGenerators();
+  }
 
-    // Conditionally generate hooks and components
-    let hooks = new Map<string, string>();
-    let components = new Map<string, string>();
+  /**
+   * Set generation strategy (Strategy Pattern)
+   */
+  setGenerationStrategy(strategy: GenerationStrategy): void {
+    this.generationStrategy = strategy;
+  }
+
+  /**
+   * Set options for generation
+   */
+  setOptions(options: GeneratorOptions): void {
+    this.options = { ...this.options, ...options };
+    // Recreate generators with new options
+    this.generatorFactory = new ConcreteGeneratorFactory(this.spec, this.basePath, this.options);
+    this.generators = this.generatorFactory.createGenerators();
+  }
+
+  /**
+   * Set verbose mode
+   */
+  setVerbose(verbose: boolean): void {
+    this.verbose = verbose;
+  }
+
+  /**
+   * Get generator key for base class
+   */
+  protected getGeneratorKey(): string {
+    return 'contract';
+  }    /**
+   * Main method to generate all API contract code using Strategy Pattern
+   */
+  generate(): Map<string, string> {
+    const fileSystem = this.serviceLocator.getFileSystem();
+    const result = this.generationStrategy.execute(this.generators, fileSystem);
     
-    if (this.options.hooks) {
-      hooks = this.hooksGenerator.generate();
+    if (!result.success) {
+      console.error('Generation failed with errors:', result.errors);
     }
     
-    if (this.options.components) {
-      components = this.componentsGenerator.generate();
+    if (this.verbose && result.statistics) {
+      this.logStatistics(result.statistics);
     }
     
-    // Combine all generated code
+    return result.generatedFiles;  }
+  
+  /**
+   * Check if any specific generator option is enabled
+   */
+  private hasSpecificGeneratorOption(): boolean {
+    return !!(
+      this.options.types ||
+      this.options.schemas ||
+      this.options.services ||
+      this.options.views ||
+      this.options.hooks ||
+      this.options.components ||
+      this.options.mocks ||
+      this.options.fakesData
+    );
+  }
+
+  /**
+   * Save all generated files using Strategy Pattern
+   */
+  saveFiles(fs: FileSystemAPI): void {
+    console.log("\n=== Generating API Contract Files ===\n");
+    
+    this.generators.forEach((generator, name) => {
+      try {
+        console.log(`Generating ${name}...`);
+        generator.saveFiles(fs);
+        if (this.verbose) {
+          console.log(`✓ Saved ${name} files`);
+        }
+      } catch (error) {
+        console.error(`✗ Failed to save ${name} files:`, error);
+      }
+    });
+
+    console.log("\nGeneration completed successfully!");
+  }
+
+  /**
+   * Log generation statistics
+   */
+  private logStatistics(statistics: any): void {
+    console.log('\n=== Generation Statistics ===');
+    console.log(`Total files: ${statistics.totalFiles}`);
+    console.log(`Types: ${statistics.typesCount}`);
+    console.log(`Schemas: ${statistics.schemasCount}`);
+    console.log(`Services: ${statistics.servicesCount}`);
+    console.log(`Views: ${statistics.viewsCount}`);
+    console.log(`Hooks: ${statistics.hooksCount}`);
+    console.log(`Components: ${statistics.componentsCount}`);
+    console.log(`Mocks: ${statistics.mocksCount}`);
+    console.log(`Fake data generators: ${statistics.fakesCount}`);
+    console.log(`Execution time: ${statistics.executionTime}ms`);
+    console.log('============================\n');
+  }
+
+  /**
+   * Implementation of abstract method from BaseGenerator
+   */
+  protected performGeneration(): Map<string, string> {
     const allGenerated = new Map<string, string>();
-    [types, schemas, services, views, hooks, components].forEach(map => {
-      for (const [key, value] of map.entries()) {
-        allGenerated.set(key, value);
+    
+    this.generators.forEach((generator, name) => {
+      try {
+        const generated = generator.generate();
+        this.mergeIntoMap(allGenerated, generated);
+      } catch (error) {
+        console.error(`Error generating ${name}:`, error);
       }
     });
     
     return allGenerated;
   }
-  
-  saveFiles(fs: FileSystemAPI): void {
-    this.typesGenerator.saveFiles(fs);
-    this.schemasGenerator.saveFiles(fs);
-    this.servicesGenerator.saveFiles(fs);
-    this.viewsGenerator.saveFiles(fs);
-    
-    if (this.options.hooks) {
-      this.hooksGenerator.saveFiles(fs);
-    }
-    
-    if (this.options.components) {
-      this.componentsGenerator.saveFiles(fs);
-    }
+
+  /**
+   * Implementation of abstract method from BaseGenerator
+   */
+  protected generateFiles(fs: FileSystemAPI): void {
+    this.saveFiles(fs);
+  }
+
+  /**
+   * Merge maps utility
+   */
+  private mergeIntoMap(target: Map<string, string>, source: Map<string, string>): void {
+    source.forEach((value, key) => target.set(key, value));
+  }
+
+  /**
+   * Get available generators
+   */
+  getAvailableGenerators(): string[] {
+    return Array.from(this.generators.keys());
+  }
+
+  /**
+   * Get specific generator
+   */
+  getGenerator(name: string): BaseGenerator | undefined {
+    return this.generators.get(name);
+  }
+
+  /**
+   * Add custom generator
+   */
+  addCustomGenerator(name: string, generator: BaseGenerator): void {
+    this.generators.set(name, generator);
+  }
+
+  /**
+   * Remove generator
+   */
+  removeGenerator(name: string): boolean {
+    return this.generators.delete(name);
   }
 }

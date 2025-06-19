@@ -1,11 +1,28 @@
 import { BaseGenerator } from '../base-generator.js';
 import { FileSystemAPI } from '../file-system.js';
-import { SchemaDefinition } from '../types.js';
+import { SchemaDefinition, SchemaReference } from '../types.js';
 
 export class SchemasGenerator extends BaseGenerator {
   private _generatedSchemas: Map<string, string> = new Map();
-  
-  generate(): Map<string, string> {
+    generate(): Map<string, string> {
+    // Process paths to identify schemas used in request bodies
+    const requestBodySchemas = new Set<string>();
+
+    // Scan all paths to identify schemas used in request bodies
+    Object.entries(this.spec.paths || {}).forEach(([path, methods]) => {
+      Object.entries(methods || {}).forEach(([method, endpoint]) => {
+        // Process request bodies for all methods
+        if (endpoint.requestBody?.content?.['application/json']?.schema) {
+          const schema = endpoint.requestBody.content['application/json'].schema;
+          if ('$ref' in schema) {
+            const schemaName = this.extractNameFromRef(schema.$ref);
+            requestBodySchemas.add(schemaName);
+          }
+        }
+      });
+    });
+
+    // Always generate schemas for all types for validation purposes
     Object.entries(this.spec.components.schemas).forEach(([name, schema]) => {
       const zodSchema = this.generateZodSchema(name, schema as SchemaDefinition);
       this._generatedSchemas.set(name, zodSchema);

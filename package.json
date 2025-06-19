@@ -11,6 +11,7 @@
     "build": "tsc && tsc -p tsconfig.root.json",
     "bundle": "node ./scripts/bundle.js",
     "build:prod": "npm run build && npm run bundle",
+    "config": "ts-node config-generator.ts",
     "generate": "node --experimental-specifier-resolution=node ./dist/index.js",
     "start": "node --experimental-specifier-resolution=node ./generator.js",
     "version": "node --experimental-specifier-resolution=node ./dist/index.js version",

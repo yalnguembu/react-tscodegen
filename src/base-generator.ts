@@ -44,9 +44,10 @@ export abstract class BaseGenerator {
   protected extractNameFromRef(ref: string): string {
     return ref.split('/').pop() || 'Unknown';
   }
-  
-  protected getOutputDirectory(key: string): string {
-    const configPath = this.config.paths?.[key]?.default || key;
+    protected getOutputDirectory(key: string): string {
+    // Handle simplified config structure - paths are now directly strings instead of objects
+    const configPath = typeof this.config.paths?.[key] === 'string' ? 
+      this.config.paths[key] : key;
     return path.join(this.basePath, configPath);
   }
   

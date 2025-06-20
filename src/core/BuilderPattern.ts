@@ -3,8 +3,8 @@
  * Creates ApiContractBuilder instances with fluent interface
  */
 import { OpenApiSpec, GeneratorOptions } from '../types.js';
-import { ApiContractBuilder } from '../api-contract-builder.js';
-import { GenerationStrategy, SequentialGenerationStrategy, ParallelGenerationStrategy } from './generation-strategy.js';
+import { APIContractBuilder } from '../APIContractBuilder.js';
+import { GenerationStrategy, SequentialGenerationStrategy, ParallelGenerationStrategy } from './GenerationStrategy.js';
 
 export class ApiContractBuilderDirector {
   private spec: OpenApiSpec;
@@ -94,8 +94,8 @@ export class ApiContractBuilderDirector {
     return this;
   }
 
-  build(): ApiContractBuilder {
-    const builder = new ApiContractBuilder(this.spec, this.basePath, this.options);
+  build(): APIContractBuilder {
+    const builder = new APIContractBuilder(this.spec, this.basePath, this.options);
     builder.setGenerationStrategy(this.strategy);
     builder.setVerbose(this.verbose);
     return builder;

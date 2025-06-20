@@ -1,103 +1,134 @@
 # react-tscodegen
 
-A powerful ES Module-based TypeScript code generator that transforms OpenAPI specifications into ready-to-use TypeScript code for frontend applications.
+A modern, enterprise-grade TypeScript code generator that transforms OpenAPI specifications into production-ready TypeScript/React code with robust OOP architecture and data-safe patterns.
 
-## Features
+## 🚀 Features
 
-This generator creates the following from your OpenAPI specification:
+This enhanced generator creates comprehensive, modular code from your OpenAPI specification:
 
-- **TypeScript interfaces** for all schema definitions
-- **Zod validation schemas** for runtime type checking
-- **API service classes** for making HTTP requests
-- **View objects** for safe data display
-- **React Query hooks** (optional) for data fetching and mutations
-- **React components** (optional) for forms and lists
-- **Mock API server** with realistic fake data
+### Core Generation
+- **TypeScript interfaces** - Complete type definitions with proper inheritance
+- **Zod validation schemas** - Runtime type checking and validation  
+- **API service classes** - HTTP client services with error handling
+- **Data-safe view classes** - Secure data access objects with getters and validation
+- **React Query hooks** - Modern data fetching with caching and mutations
+- **React components** - Card, list, and form components for rapid UI development
+- **Mock services** - Realistic fake data generators for development and testing
 
-## Quick Start
+### Architecture Enhancements
+- **Enhanced Base Generator** - Modern OOP foundation with template engine
+- **Swagger Parser Integration** - Robust OpenAPI spec parsing with dereferencing
+- **Template System** - Modular template architecture for customization
+- **Component Separation** - Clear separation between data logic and presentation
+- **Type Safety** - End-to-end type safety from API to UI components
 
-### Using npm script
+## 🎯 Component Generation Strategy
 
+### Views (Data-Safe Classes)
+- Generate data-safe classes for secure API data handling
+- Provide getters with null safety and default values
+- No React components - pure data logic only
+
+### Components
+- **Card Components** - Display individual entities with actions
+- **List Components** - Display collections with card components  
+- **Form Components** - Create/edit forms for POST/PUT operations
+- Generated for **every GET method response** ensuring complete coverage
+
+## 🛠 Quick Start
+
+### Generate Everything
 ```bash
-# Generate everything
-npm run generate-api
+# Build and generate all components
+npm run build
+node dist/index.js all --spec api-specification.yaml --outDir src
 
-# Generate with hooks and components
-npm run generate-api:full
+# Generate specific components
+node dist/index.js components --spec api-specification.yaml --outDir src
+node dist/index.js views --spec api-specification.yaml --outDir src
 ```
 
-### Using the generator directly
-
+### Demo Commands
 ```bash
-# Generate everything 
-node --experimental-specifier-resolution=node generator.js
+# Test component generation
+npm run demo:components
 
-# Generate everything with hooks and components
-node --experimental-specifier-resolution=node generator.js --hooks --components
+# Test view generation  
+npm run demo:views
 
-# Specify custom paths
-node --experimental-specifier-resolution=node generator.js --spec path/to/spec.yaml --output path/to/output
+# Full generation test
+npm run test:generation
 ```
 
-### Using the CLI directly for specific generators
+## 📋 CLI Commands
 
+### Available Commands
 ```bash
-# Generate all
-node dist/index.js all --spec path/to/spec.yaml --output path/to/output
+node dist/index.js <command> [options]
 
-# Generate only types
-node dist/index.js types --spec path/to/spec.yaml --output path/to/output
-
-# Generate only services
-node dist/index.js services --spec path/to/spec.yaml --output path/to/output
-
-# Generate hooks from existing services
-node dist/index.js hooks --input path/to/services --output path/to/output
-
-# Generate only components
-node dist/index.js components --spec path/to/spec.yaml --output path/to/output
-
-# Generate only views
-node dist/index.js views --spec path/to/spec.yaml --output path/to/output
+Commands:
+  all [options]         Generate all API contracts (types, schemas, services, hooks, components)
+  types [options]       Generate TypeScript types from OpenAPI schemas
+  schemas [options]     Generate Zod schemas from OpenAPI schemas  
+  services [options]    Generate API service classes from OpenAPI paths
+  views [options]       Generate view helper classes from OpenAPI schemas
+  mocks [options]       Generate API mock services from OpenAPI paths
+  fakes-data [options]  Generate fake data generators from OpenAPI schemas
+  hooks [options]       Generate React Query hooks from API services
+  components [options]  Generate React components (cards, lists, forms) from OpenAPI schemas
 ```
 
-## Generator Options
-
+### Common Options
 ```
---spec <path>            Path to the OpenAPI specification file (YAML or JSON)
---output <path>          Output directory for generated files (default: ./src)
---hooks [path]           Generate React hooks for API services (optional: specify output directory)
---components [path]      Generate React components (optional: specify output directory)
---forms                  Generate form components (requires --components)
---list                   Generate list components (requires --components)
---help, -h               Show help information
-```
-
-## Examples
-
-```bash
-# Basic usage with default options
-npm run generate-api
-
-# Generate hooks and components
-npm run generate-api -- --hooks --components
-
-# Specify custom paths
-npm run generate-api -- --spec path/to/spec.yaml --output ./src/generated --hooks ./src/hooks --components ./src/ui
+-s, --spec <path>        Path to the OpenAPI specification file (YAML or JSON)
+-o, --outDir <directory> Output directory for generated files (default: "./src")
+--forms                  Generate form components (default: true)
+--list                   Generate list components (default: true)  
+--cards                  Generate card components (default: true)
+-v, --verbose            Show verbose output
+--help                   Show help information
 ```
 
-## Generated Output Structure
+## 📁 Generated Output Structure
 
 ```
 <output-dir>/
-  types/          # TypeScript interfaces
-  schemas/        # Zod validation schemas
-  services/       # API service classes
-  views/          # View objects (optional)
-  hooks/          # React Query hooks (if --hooks is specified)
-  components/     # React components (if --components is specified)
-    forms/        # Form components for creating and editing resources
-    lists/        # List components for displaying resources
+├── types/api/           # TypeScript interfaces
+│   ├── user.ts
+│   ├── club.ts
+│   └── index.ts
+├── schemas/            # Zod validation schemas
+│   ├── user-schema.ts
+│   └── index.ts
+├── services/           # API service classes  
+│   ├── user-service.ts
+│   └── index.ts
+├── views/              # Data-safe view classes
+│   ├── user-view.ts
+│   └── index.ts
+├── hooks/              # React Query hooks
+│   ├── use-user.ts
+│   └── index.ts
+├── components/         # React components
+│   ├── cards/          # Entity card components
+│   │   ├── user-card.tsx
+│   │   └── index.ts
+│   ├── lists/          # List components (for GET responses)
+│   │   ├── user-list.tsx
+│   │   ├── paginated-users-list.tsx
+│   │   └── index.ts
+│   ├── forms/          # Form components
+│   │   ├── create/     # POST request forms
+│   │   │   ├── user-create-form.tsx
+│   │   │   └── index.ts
+│   │   ├── edit/       # PUT/PATCH request forms
+│   │   │   └── index.ts
+│   │   └── index.ts
+│   └── index.ts
+└── mocks/              # Mock services and data
+    ├── user-mock.ts
+    └── index.ts
+```
   mock-server/    # Mock API server with realistic fake data
     fake-data/    # Fake data generators
     response-utils/  # Response utilities for wrapping responses
@@ -115,7 +146,36 @@ function UsersList() {
   return /* render users */;
 }
 
-function CreateUserForm() {
+function CreateUserForm() {## 💡 Usage Examples
+
+### Using Generated View Classes (Data-Safe)
+```typescript
+import { UserView } from './views/user-view';
+
+function UserProfile({ userData }: { userData: User }) {
+  const userView = new UserView(userData);
+  
+  return (
+    <div>
+      <h1>{userView.getFullName()}</h1>  {/* Safe getter with fallbacks */}
+      <p>{userView.getEmail()}</p>
+      <p>Status: {userView.hasField('status') ? userView.getStatus() : 'Unknown'}</p>
+      
+      {/* Convert to API payload when needed */}
+      <button onClick={() => api.updateUser(userView.toApiPayload())}>
+        Update
+      </button>
+    </div>
+  );
+}
+```
+
+### Using Generated Hooks
+```typescript
+import { useUser, useCreateUser, useUpdateUser } from './hooks/use-user';
+
+function UserManager() {
+  const { data: users, isLoading } = useUsers();
   const createUser = useCreateUser({
     onSuccess: () => console.log('User created!')
   });
@@ -129,16 +189,28 @@ function CreateUserForm() {
 ```
 
 ### Using Generated Components
-
 ```tsx
 import { UserList } from './components/lists/user-list';
+import { UserCard } from './components/cards/user-card';
 import { UserCreateForm, UserEditForm } from './components/forms';
 
 function UsersPage() {
   const [selectedUser, setSelectedUser] = useState(null);
+  const { data: users, isLoading } = useUsers();
   
   return (
     <div>
+      {/* Card Component Example */}
+      {selectedUser && (
+        <UserCard 
+          data={selectedUser}
+          onEdit={handleEditUser}
+          onDelete={handleDeleteUser}
+          showActions={true}
+        />
+      )}
+      
+      {/* Form Components */}
       {selectedUser ? (
         <UserEditForm 
           data={selectedUser}
@@ -152,19 +224,61 @@ function UsersPage() {
         />
       )}
       
+      {/* List Component - Uses Cards Internally */}
       <UserList 
-        data={users} 
-        isLoading={isLoading}
+        items={users} 
+        loading={isLoading}
         onEdit={setSelectedUser}
         onDelete={handleDeleteUser}
-        currentPage={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
+        onView={handleViewUser}
+        showActions={true}
+        compact={false}
       />
     </div>
   );
 }
 ```
+
+## 🏗 Architecture Overview
+
+### Enhanced Base Generator
+- Modern OOP foundation with abstract methods
+- Template engine integration for flexible code generation
+- Robust error handling and logging
+- Extensible generator pattern for custom generators
+
+### Swagger Parser Integration
+- Uses `@apidevtools/swagger-parser` for robust OpenAPI parsing
+- Automatic dereferencing of `$ref` and `allOf` schemas
+- Handles complex nested schemas and inheritance
+- Fallback parsing for edge cases
+
+### Template System
+- Modular template architecture for easy customization
+- Variable substitution with loop and conditional support
+- Separate templates for different component types
+- Clean separation of logic and presentation
+
+### Component Generation Strategy
+- **Data Logic**: View classes provide safe data access
+- **UI Components**: Cards, lists, and forms for complete UI coverage
+- **Smart Generation**: Only generates components for relevant schemas
+- **Type Safety**: End-to-end TypeScript integration
+
+## 📊 Generation Coverage
+
+### Comprehensive Coverage
+- **Types**: 100% of OpenAPI schemas converted to TypeScript
+- **Views**: Data-safe classes for all object schemas  
+- **Cards**: Individual entity display components
+- **Lists**: ALL GET method responses get list components
+- **Forms**: CREATE forms for POST endpoints, EDIT forms for PUT/PATCH
+
+### Quality Assurance
+- TypeScript compilation validation
+- Template variable processing verification
+- Schema relationship handling
+- Import/export consistency checks
 
 ## Mock API Server
 
@@ -363,3 +477,35 @@ The GitHub release script:
 ### Changelog
 
 All notable changes are documented in the [CHANGELOG.md](CHANGELOG.md) file.
+
+## 🆕 Recent Major Improvements (v2.0.0)
+
+### Enhanced Architecture
+- **Refactored to EnhancedBaseGenerator**: Modern OOP foundation with abstract methods
+- **Template Engine Integration**: Flexible variable processing with loops and conditionals  
+- **Swagger Parser**: Robust OpenAPI parsing with dereferencing support
+- **Modular Templates**: Clean separation of logic and presentation
+
+### Component Generation Overhaul
+- **Data-Safe Views**: Pure data classes without React components
+- **Card Components**: Separate entity display components for reusability
+- **Complete List Coverage**: List components for ALL GET method responses  
+- **Smart Schema Detection**: Enhanced logic for entity and response schema identification
+
+### Developer Experience
+- **CLI Command Fix**: Components command now works correctly
+- **Better Error Handling**: Comprehensive TypeScript error validation
+- **Demo Commands**: Easy testing with `npm run demo:components` and `npm run demo:views`
+- **Improved Logging**: Clear generation progress and file counts
+
+### Bug Fixes
+- Fixed CLI routing for components command
+- Resolved template variable processing issues
+- Fixed TypeScript compilation errors in generated code
+- Enhanced schema type detection and filtering
+
+### Breaking Changes
+- Views no longer generate React components (data classes only)
+- Components are now organized in cards/, lists/, and forms/ subdirectories
+- Enhanced base generator requires all generators to implement abstract methods
+- Template variable names updated for consistency

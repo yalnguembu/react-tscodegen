@@ -1,5 +1,5 @@
-import { BaseGenerator } from '../enhanced-base-generator.js';
-import { FileSystemAPI } from '../file-system.js';
+import { BaseGenerator } from '../BaseGenerator.js';
+import { FileSystemAPI } from '../FileSystem.js';
 import { SchemaDefinition } from '../types.js';
 
 export class TypesGenerator extends BaseGenerator {
@@ -41,7 +41,16 @@ export class TypesGenerator extends BaseGenerator {
 
     this.createIndexFile(typesDir, indexFileContent, fs);
   }
-    private generateTypeDefinition(name: string, schema: SchemaDefinition): string {
+  // Keep the old public methods for backward compatibility
+  generate(): Map<string, string> {
+    return super.generate();
+  }
+  
+  saveFiles(fs: FileSystemAPI): void {
+    super.saveFiles(fs);
+  }
+
+  private generateTypeDefinition(name: string, schema: SchemaDefinition): string {
     switch (schema.type) {
       case 'object':
         return this.generateObjectTypeDefinition(name, schema);

@@ -2,11 +2,11 @@
  * Dependency Injection Container
  * Manages dependencies and provides loose coupling
  */
-import { FileSystemAPI, NodeFileSystem } from '../file-system.js';
+import { FileSystemAPI, NodeFileSystem } from '../FileSystem.js';
 import { OpenApiSpec, GeneratorOptions } from '../types.js';
-import { GenerationStrategy, SequentialGenerationStrategy } from './generation-strategy.js';
-import { GeneratorFactory } from './abstract-factory.js';
-import { ConcreteGeneratorFactory } from './concrete-factory.js';
+import { GenerationStrategy, SequentialGenerationStrategy } from './GenerationStrategy.js';
+import { GeneratorFactory } from './AbstractFactory.js';
+import { ConcreteGeneratorFactory } from './ConcreteFactory.js';
 
 export interface ServiceContainer {
   register<T>(key: string, factory: () => T): void;

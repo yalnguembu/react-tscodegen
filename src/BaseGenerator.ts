@@ -2,9 +2,9 @@
  * Enhanced Base Generator with improved OOP design
  * Implements Template Method Pattern and provides better abstraction
  */
-import { FileSystemAPI } from './file-system.js';
+import { FileSystemAPI } from './FileSystem.js';
 import { OpenApiSpec, SchemaDefinition } from './types.js';
-import { ServiceLocator } from './core/dependency-injection.js';
+import SwaggerParser from '@apidevtools/swagger-parser';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -38,21 +38,30 @@ export abstract class BaseGenerator {
   protected basePath: string;
   protected config: GeneratorConfig;
   protected context: GenerationContext;
-  protected serviceLocator: ServiceLocator;
-
+  
   constructor(spec: OpenApiSpec, basePath: string) {
     this.spec = spec;
     this.basePath = basePath;
-    this.serviceLocator = ServiceLocator.getInstance();
-    this.loadConfig();
-    this.initializeContext();
+    this.config = this.getDefaultConfig(); // Initialize with default first
+    this.loadConfig(); // Then load from file if available
+    this.context = this.createInitialContext(); // Initialize context
+    this.initializeContext(); // Then complete initialization
   }
 
+  private createInitialContext(): GenerationContext {
+    return {
+      spec: this.spec,
+      basePath: this.basePath,
+      config: this.config,
+      outputDirectory: this.basePath // Will be updated in initializeContext
+    };
+  }
   /**
    * Template method - defines the skeleton of the generation process
    * Subclasses can override specific steps but not the overall structure
+   * NOTE: This method should not be overridden - use performGeneration() instead
    */
-  public final generate(): Map<string, string> {
+  public generate(): Map<string, string> {
     this.validateSpec();
     this.preprocessData();
     const result = this.performGeneration();
@@ -62,8 +71,9 @@ export abstract class BaseGenerator {
 
   /**
    * Template method for saving files
+   * NOTE: This method should not be overridden - use generateFiles() instead
    */
-  public final saveFiles(fs: FileSystemAPI): void {
+  public saveFiles(fs: FileSystemAPI): void {
     this.prepareOutputDirectory(fs);
     this.generateFiles(fs);
     this.createIndexFiles(fs);
@@ -153,6 +163,28 @@ export abstract class BaseGenerator {
       ? this.config.paths[generatorKey] 
       : generatorKey;
     return path.join(this.basePath, configPath);
+  }
+  /**
+   * Dereference the OpenAPI spec to resolve all $ref and allOf schemas
+   * This ensures that complex schemas like those using allOf are properly resolved
+   */
+  protected async dereferenceSpec(spec: OpenApiSpec): Promise<OpenApiSpec> {
+    try {
+      const dereferencedSpec = await SwaggerParser.dereference(spec as any);
+      return dereferencedSpec as unknown as OpenApiSpec;
+    } catch (error) {
+      console.warn('Failed to dereference spec:', error);
+      return spec; // Fallback to original spec
+    }
+  }
+
+  /**
+   * Initialize the spec with proper dereferencing
+   * This should be called after construction when async operations are possible
+   */
+  public async initializeSpec(): Promise<void> {
+    this.spec = await this.dereferenceSpec(this.spec);
+    this.context.spec = this.spec;
   }
 
   // Abstract method for getting the generator key

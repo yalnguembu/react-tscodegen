@@ -1,9 +1,21 @@
-import { BaseGenerator } from '../base-generator.js';
-import { FileSystemAPI } from '../file-system.js';
+import { BaseGenerator } from '../BaseGenerator.js';
+import { FileSystemAPI } from '../FileSystem.js';
 import { SchemaDefinition, SchemaReference } from '../types.js';
 
 export class SchemasGenerator extends BaseGenerator {
   private _generatedSchemas: Map<string, string> = new Map();
+  
+  protected getGeneratorKey(): string {
+    return 'schemas';
+  }
+
+  protected performGeneration(): Map<string, string> {
+    return this.generate();
+  }
+
+  protected async generateFiles(fs: FileSystemAPI): Promise<void> {
+    this.saveFiles(fs);
+  }
     generate(): Map<string, string> {
     // Process paths to identify schemas used in request bodies
     const requestBodySchemas = new Set<string>();

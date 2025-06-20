@@ -2,7 +2,7 @@
   "name": "react-tscodegen",
   "version": "1.0.0",
   "type": "module",
-  "description": "React typescript Code generator from OpenAPI specifications",
+  "description": "Modern TypeScript/React code generator from OpenAPI specifications with enhanced component generation, data-safe views, and robust OOP architecture",
   "main": "dist/index.js",
   "bin": {
     "react-tscodegen": "./dist/index.js"
@@ -19,11 +19,23 @@
     "release:minor": "node --experimental-specifier-resolution=node ./scripts/release.js minor",
     "release:major": "node --experimental-specifier-resolution=node ./scripts/release.js major",
     "prerelease": "node --experimental-specifier-resolution=node ./scripts/pre-release-check.js",
-    "github-release": "node --experimental-specifier-resolution=node ./scripts/github-release.js"
+    "github-release": "node --experimental-specifier-resolution=node ./scripts/github-release.js",
+    "generate:all": "node dist/index.js all --spec api-specification.yaml",
+    "generate:types": "node dist/index.js types --spec api-specification.yaml", 
+    "generate:schemas": "node dist/index.js schemas --spec api-specification.yaml",
+    "generate:services": "node dist/index.js services --spec api-specification.yaml",
+    "generate:hooks": "node dist/index.js hooks --spec api-specification.yaml",
+    "generate:components": "node dist/index.js components --spec api-specification.yaml",
+    "generate:views": "node dist/index.js views --spec api-specification.yaml",
+    "generate:mocks": "node dist/index.js mocks --spec api-specification.yaml",
+    "generate:fakes-data": "node dist/index.js fakes-data --spec api-specification.yaml",
+    "clean:generated": "rm -rf src/types src/schemas src/services src/hooks src/components src/views src/mocks src/fakes-data"
   },
   "dependencies": {
+    "@apidevtools/swagger-parser": "^12.0.0",
     "commander": "^10.0.1",
     "js-yaml": "^4.1.0",
+    "swagger-parser": "^10.0.3",
     "yargs": "^17.7.2",
     "zod": "^3.22.4"
   },
@@ -31,7 +43,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.10.5",
     "@types/yargs": "^17.0.32",
-    "esbuild": "^0.19.12",
+    "esbuild": "^0.25.5",
     "typescript": "^5.3.3"
   }
 }

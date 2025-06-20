@@ -81,3 +81,24 @@ export const TEMPLATE_METADATA_MAP: Record<string, TemplateMetadata> = {
   mock: MOCK_TEMPLATE_METADATA,
   fakeData: FAKE_DATA_TEMPLATE_METADATA
 };
+
+// Template file exports
+export * from './view.template.js';
+export * from './service.template.js';
+export * from './fake-data.template.js';
+export * from './mock.template.js';
+export * from './type.template.js';
+export * from './schema.template.js';
+export * from './hook.template.js';
+export * from './form.template.js';
+export * from './list.template.js';
+export * from './card.template.js';
+
+// Template metadata exports
+export * from './view.metadata.js';
+export * from './service.metadata.js';
+export * from './fake-data.metadata.js';
+export * from './mock.metadata.js';
+export * from './hook.metadata.js';
+export * from './form.metadata.js';
+export * from './list.metadata.js';

@@ -1,23 +1,21 @@
-import { BaseGenerator } from './base-generator.js';
-import { FileSystemAPI } from './file-system.js';
+import { BaseGenerator } from './BaseGenerator.js';
+import { FileSystemAPI, NodeFileSystem } from './FileSystem.js';
 import { GeneratorOptions, OpenApiSpec } from './types.js';
-import { GeneratorFactory } from './core/abstract-factory.js';
-import { ConcreteGeneratorFactory } from './core/concrete-factory.js';
-import { GenerationStrategy, SequentialGenerationStrategy, GenerationResult } from './core/generation-strategy.js';
-import { ServiceLocator } from './core/dependency-injection.js';
+import { GeneratorFactory } from './core/AbstractFactory.js';
+import { ConcreteGeneratorFactory } from './core/ConcreteFactory.js';
+import { GenerationStrategy, SequentialGenerationStrategy, GenerationResult } from './core/GenerationStrategy.js';
 
-export class ApiContractBuilder extends BaseGenerator {
+export class APIContractBuilder extends BaseGenerator {
   private generatorFactory: GeneratorFactory;
   private generators: Map<string, BaseGenerator> = new Map();
   private generationStrategy: GenerationStrategy;
   private options: GeneratorOptions;
   private verbose: boolean = false;
-  private serviceLocator: ServiceLocator;  
+
   constructor(spec: OpenApiSpec, basePath: string = './frontend/src', options: GeneratorOptions = {}) {
     super(spec, basePath);
     this.options = options;
-    this.serviceLocator = ServiceLocator.getInstance();
-    this.generationStrategy = this.serviceLocator.getGenerationStrategy();
+    this.generationStrategy = new SequentialGenerationStrategy();
     
     // Initialize factory and create generators
     this.generatorFactory = new ConcreteGeneratorFactory(spec, basePath, options);
@@ -33,8 +31,7 @@ export class ApiContractBuilder extends BaseGenerator {
 
   /**
    * Set options for generation
-   */
-  setOptions(options: GeneratorOptions): void {
+   */  setOptions(options: GeneratorOptions): void {
     this.options = { ...this.options, ...options };
     // Recreate generators with new options
     this.generatorFactory = new ConcreteGeneratorFactory(this.spec, this.basePath, this.options);
@@ -53,12 +50,12 @@ export class ApiContractBuilder extends BaseGenerator {
    */
   protected getGeneratorKey(): string {
     return 'contract';
-  }    /**
+  }  /**
    * Main method to generate all API contract code using Strategy Pattern
-   */
-  generate(): Map<string, string> {
-    const fileSystem = this.serviceLocator.getFileSystem();
-    const result = this.generationStrategy.execute(this.generators, fileSystem);
+   * This overrides the base generate method to support async operations
+   */  async generateAsync(): Promise<Map<string, string>> {
+    const fileSystem = new NodeFileSystem();
+    const result = await Promise.resolve(this.generationStrategy.execute(this.generators, fileSystem));
     
     if (!result.success) {
       console.error('Generation failed with errors:', result.errors);
@@ -68,7 +65,31 @@ export class ApiContractBuilder extends BaseGenerator {
       this.logStatistics(result.statistics);
     }
     
-    return result.generatedFiles;  }
+    return result.generatedFiles;
+  }
+
+  /**
+   * Synchronous generate method for base class compatibility
+   */
+  generate(): Map<string, string> {    // For synchronous compatibility, we'll run the sequential strategy
+    const fileSystem = new NodeFileSystem();
+    const result = this.generationStrategy.execute(this.generators, fileSystem);
+    
+    // Handle both sync and async results
+    if (result instanceof Promise) {
+      throw new Error('Use generateAsync() for asynchronous generation strategies');
+    }
+    
+    if (!result.success) {
+      console.error('Generation failed with errors:', result.errors);
+    }
+    
+    if (this.verbose && result.statistics) {
+      this.logStatistics(result.statistics);
+    }
+    
+    return result.generatedFiles;
+  }
   
   /**
    * Check if any specific generator option is enabled

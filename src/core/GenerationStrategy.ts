@@ -2,11 +2,11 @@
  * Strategy Pattern for Generation Strategies
  * Defines different approaches to code generation
  */
-import { BaseGenerator } from '../base-generator.js';
-import { FileSystemAPI } from '../file-system.js';
+import { BaseGenerator } from '../BaseGenerator.js';
+import { FileSystemAPI } from '../FileSystem.js';
 
 export interface GenerationStrategy {
-  execute(generators: Map<string, BaseGenerator>, fileSystem: FileSystemAPI): GenerationResult;
+  execute(generators: Map<string, BaseGenerator>, fileSystem: FileSystemAPI): GenerationResult | Promise<GenerationResult>;
 }
 
 export interface GenerationResult {

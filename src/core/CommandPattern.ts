@@ -3,8 +3,8 @@
  * Encapsulates CLI operations as objects
  */
 import { OpenApiSpec, GeneratorOptions } from '../types.js';
-import { FileSystemAPI } from '../file-system.js';
-import { GenerationResult } from './generation-strategy.js';
+import { FileSystemAPI } from '../FileSystem.js';
+import { GenerationResult } from './GenerationStrategy.js';
 
 export interface Command {
   execute(): Promise<GenerationResult>;
@@ -56,13 +56,12 @@ export class GenerateCommand extends BaseCommand {
   }
 
   async execute(): Promise<GenerationResult> {
-    const { ApiContractBuilder } = await import('../api-contract-builder.js');
-    const builder = new ApiContractBuilder(this.spec, this.basePath, this.options);
-    
-    // Set specific generator options
+    const { APIContractBuilder: APIContractBuilder } = await import('../APIContractBuilder.js');
+    const builder = new APIContractBuilder(this.spec, this.basePath, this.options);
+      // Set specific generator options
     const filteredOptions = { ...this.options };
     this.generatorTypes.forEach(type => {
-      filteredOptions[type as keyof GeneratorOptions] = true;
+      (filteredOptions as any)[type] = true;
     });
 
     builder.setOptions(filteredOptions);
@@ -98,8 +97,8 @@ export class GenerateCommand extends BaseCommand {
  */
 export class GenerateAllCommand extends BaseCommand {
   async execute(): Promise<GenerationResult> {
-    const { ApiContractBuilder } = await import('../api-contract-builder.js');
-    const builder = new ApiContractBuilder(this.spec, this.basePath, {
+    const { APIContractBuilder: APIContractBuilder } = await import('../APIContractBuilder.js');
+    const builder = new APIContractBuilder(this.spec, this.basePath, {
       types: true,
       schemas: true,
       services: true,

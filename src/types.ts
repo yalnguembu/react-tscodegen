@@ -30,12 +30,13 @@ export interface EndpointDefinition {
 }
 
 export interface SchemaDefinition {
-  type: string;
+  type?: string;  // Made optional since it's not always explicitly defined
   properties?: Record<string, any>;
   required?: string[];
   items?: SchemaDefinition;
   enum?: string[];
   format?: string;
+  allOf?: (SchemaDefinition | SchemaReference)[];  // Added for composition patterns
 }
 
 export interface SchemaReference {

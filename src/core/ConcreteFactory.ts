@@ -2,16 +2,16 @@
  * Concrete Factory Implementation
  * Creates specific generator instances
  */
-import { GeneratorFactory } from './abstract-factory.js';
-import { BaseGenerator } from '../base-generator.js';
-import { TypesGenerator } from '../generators/types-generator.js';
-import { SchemasGenerator } from '../generators/schemas-generator.js';
-import { ServicesGenerator } from '../generators/services-generator.js';
-import { HooksGenerator } from '../generators/hooks-generator.js';
-import { ComponentsGenerator } from '../generators/components-generator.js';
-import { ViewsGenerator } from '../generators/views-generator.js';
-import { MocksGenerator } from '../generators/mocks-generator.js';
-import { FakesDataGenerator } from '../generators/fakes-data-generator.js';
+import { GeneratorFactory } from './AbstractFactory.js';
+import { BaseGenerator } from '../BaseGenerator.js';
+import { TypesGenerator } from '../generators/TypesGenerator.js';
+import { SchemasGenerator } from '../generators/SchemasGenerator.js';
+import { ServicesGenerator } from '../generators/ServicesGenerator.js';
+import { HooksGenerator } from '../generators/HooksGenerator.js';
+import { ComponentsGenerator } from '../generators/ComponentsGenerator.js';
+import { ViewsGenerator } from '../generators/ViewsGenerator.js';
+import { MocksGenerator } from '../generators/MocksGenerator.js';
+import { FakesDataGenerator } from '../generators/FakesDataGenerator.js';
 
 export class ConcreteGeneratorFactory extends GeneratorFactory {
   createTypesGenerator(): BaseGenerator {
@@ -41,7 +41,6 @@ export class ConcreteGeneratorFactory extends GeneratorFactory {
   createMocksGenerator(): BaseGenerator {
     return new MocksGenerator(this.spec, this.basePath);
   }
-
   createFakesDataGenerator(): BaseGenerator {
     return new FakesDataGenerator(this.spec, this.basePath);
   }

@@ -2,7 +2,7 @@
  * Abstract Factory Pattern Implementation
  * Creates different types of generators based on configuration
  */
-import { BaseGenerator } from '../base-generator.js';
+import { BaseGenerator } from '../BaseGenerator.js';
 import { OpenApiSpec, GeneratorOptions } from '../types.js';
 
 export abstract class GeneratorFactory {

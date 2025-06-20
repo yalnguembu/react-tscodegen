@@ -1,5 +1,11 @@
-import { BaseGenerator } from '../base-generator.js';
-import { FileSystemAPI } from '../file-system.js';
+import { BaseGenerator } from '../BaseGenerator.js';
+import { FileSystemAPI } from '../FileSystem.js';
+import { TemplateEngine, TemplateVariables } from '../core/TemplateEngine.js';
+import { 
+  QUERY_HOOK_TEMPLATE, 
+  MUTATION_HOOK_TEMPLATE, 
+  HOOK_IMPORTS_TEMPLATE 
+} from '../templates/hook.template.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,11 +25,22 @@ export class HooksGenerator extends BaseGenerator {
       this._servicesCode = servicesCode;
     }
   }
-  generate(): Map<string, string> {
-    // Get config options
-    const useReactQuery = this.config.options?.hooksGeneration?.useReactQuery !== false;
-    const includeInfiniteQueries = this.config.options?.hooksGeneration?.includeInfiniteQueries !== false;
-    const includeMutations = this.config.options?.hooksGeneration?.includeMutations !== false;
+
+  protected getGeneratorKey(): string {
+    return 'hooks';
+  }
+
+  protected performGeneration(): Map<string, string> {
+    return this.generate();
+  }
+
+  protected async generateFiles(fs: FileSystemAPI): Promise<void> {
+    this.saveFiles(fs);
+  }
+  generate(): Map<string, string> {    // Get config options (use defaults for now)
+    const useReactQuery = true;
+    const includeInfiniteQueries = true;
+    const includeMutations = true;
     
     console.log(`Generating hooks with React Query: ${useReactQuery}`);
     console.log(`Include infinite queries: ${includeInfiniteQueries}`);
@@ -99,9 +116,8 @@ export class HooksGenerator extends BaseGenerator {
         console.error('The file system implementation does not support directory reading');
         return;
       }
-      
-      const files = fs.readDirectory(directory);
-      const serviceFiles = files.filter(file => file.endsWith('.service.ts'));
+        const files = fs.readDirectory(directory);
+      const serviceFiles = files.filter(file => file.endsWith('-service.ts') || file.endsWith('.service.ts'));
         serviceFiles.forEach(file => {
         const filePath = fs.joinPath(directory, file);
         // Read file contents using the readFile method if available
@@ -117,10 +133,14 @@ export class HooksGenerator extends BaseGenerator {
       console.error(`Error loading services from directory ${directory}:`, error);
     }
   }
-  
-  private extractServiceName(fileName: string): string | null {
-    // Extract service name from file name (e.g., user.service.ts -> UserService)
-    const match = fileName.match(/(.+)\.service\.ts$/);
+    private extractServiceName(fileName: string): string | null {
+    // Extract service name from file name (e.g., authentication-service.ts -> AuthenticationService)
+    let match = fileName.match(/(.+)-service\.ts$/);
+    if (!match) {
+      // Also support .service.ts pattern (e.g., user.service.ts -> UserService)
+      match = fileName.match(/(.+)\.service\.ts$/);
+    }
+    
     if (match && match[1]) {
       const baseName = match[1];
       // Convert kebab-case to PascalCase
@@ -141,8 +161,7 @@ export class HooksGenerator extends BaseGenerator {
     
     return pascalCase.endsWith('Service') ? pascalCase : `${pascalCase}Service`;
   }
-  
-  private generateHooksForService(
+    private generateHooksForService(
     serviceName: string, 
     serviceCode: string, 
     options: { useReactQuery: boolean; includeInfiniteQueries: boolean; includeMutations: boolean } = {
@@ -152,27 +171,33 @@ export class HooksGenerator extends BaseGenerator {
     }
   ): string {
     // Extract the endpoints from the service code
-    const regex = /async\s+(\w+)\(([^)]*)\)[^{]*{[^}]*}/g;
+    // Updated regex to match service methods that return CancelablePromise
+    const regex = /(\w+)\(([^)]*)\):\s*CancelablePromise<[^>]+>/g;
     const matches = Array.from(serviceCode.matchAll(regex));
     
     if (!matches.length) {
+      console.log(`No service methods found in ${serviceName} using pattern: methodName(params): CancelablePromise<Type>`);
       return '';
     }
+    
+    console.log(`Found ${matches.length} service methods in ${serviceName}:`, matches.map(m => m[1]));
     
     const resourceName = serviceName.replace('Service', '');
     const serviceLower = serviceName.charAt(0).toLowerCase() + serviceName.slice(1);
     const serviceFile = this.toKebabCase(serviceName);
-    
-    // Generate imports
+      // Generate imports
     let importedTypes = new Set<string>();
     matches.forEach(match => {
       const methodName = match[1];
       importedTypes.add(resourceName);
     });
     
-    let hookImports = `import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';\n`;
-    hookImports += `import { ${Array.from(importedTypes).join(', ')} } from '../types';\n`;
-    hookImports += `import { ${serviceName}, ${serviceLower} } from '../services/${serviceFile}';\n\n`;
+    const hookImports = TemplateEngine.process(HOOK_IMPORTS_TEMPLATE, {
+      importedTypes: Array.from(importedTypes).join(', '),
+      serviceName,
+      serviceLower,
+      serviceFile
+    });
     
     let hookFunctions = '';
     
@@ -220,7 +245,6 @@ export class HooksGenerator extends BaseGenerator {
  */
 ${hookFunctions}`;
   }
-  
   private generateQueryHook(resourceName: string, serviceName: string, methodName: string, params: string): string {
     const hookName = `use${methodName.charAt(0).toUpperCase() + methodName.slice(1)}`;
     const queryKeyParts = params
@@ -231,25 +255,19 @@ ${hookFunctions}`;
         return name.trim();
       });
     
-    const queryKeyString = queryKeyParts.length > 0
-      ? `'${resourceName}', '${methodName}', ${queryKeyParts.join(', ')}`
-      : `'${resourceName}', '${methodName}'`;
+    const variables: TemplateVariables = {
+      methodName: hookName,
+      camelCaseMethodName: hookName.replace('use', ''),
+      resourceName,
+      serviceName,
+      serviceMethodName: methodName, // The actual service method name
+      params: queryKeyParts.length > 0 ? `{ ${queryKeyParts.join(', ')} }: { ${params} }` : '',
+      hasParams: queryKeyParts.length > 0 ? `, ${queryKeyParts.join(', ')}` : '',
+      methodParams: queryKeyParts.join(', ')
+    };
     
-    const queryParamsString = queryKeyParts.length > 0
-      ? `{ ${queryKeyParts.join(', ')} }: { ${params} }`
-      : '';
-    
-    const queryTemplate = `
-export function ${hookName}(${queryParamsString}) {
-  return useQuery({
-    queryKey: [${queryKeyString}],
-    queryFn: () => ${serviceName}.${methodName}(${queryKeyParts.join(', ')}),
-  });
-}`;
-    
-    return queryTemplate;
+    return TemplateEngine.process(QUERY_HOOK_TEMPLATE, variables);
   }
-  
   private generateMutationHook(resourceName: string, serviceName: string, methodName: string, params: string): string {
     const hookName = `use${methodName.charAt(0).toUpperCase() + methodName.slice(1)}`;
     
@@ -262,20 +280,19 @@ export function ${hookName}(${queryParamsString}) {
       }
     }
     
-    const mutationTemplate = `
-export function ${hookName}() {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
-    mutationFn: (${params || 'data: any'}) => ${serviceName}.${methodName}(${params ? params.split(',').map(p => p.trim().split(':')[0].trim()).join(', ') : 'data'}),
-    onSuccess: () => {
-      // Invalidate related queries to refetch data
-      queryClient.invalidateQueries({ queryKey: ['${resourceName}'] });
-    },
-  });
-}`;
+    const methodParams = params ? params.split(',').map(p => p.trim().split(':')[0].trim()).join(', ') : 'data';
     
-    return mutationTemplate;
+    const variables: TemplateVariables = {
+      methodName: hookName,
+      camelCaseMethodName: hookName.replace('use', ''),
+      resourceName,
+      serviceName,
+      serviceMethodName: methodName, // The actual service method name
+      params: params || 'data: any',
+      methodParams
+    };
+    
+    return TemplateEngine.process(MUTATION_HOOK_TEMPLATE, variables);
   }
   
   /**

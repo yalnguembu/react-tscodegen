@@ -1,5 +1,5 @@
-import { BaseGenerator } from '../base-generator.js';
-import { FileSystemAPI } from '../file-system.js';
+import { BaseGenerator } from '../BaseGenerator.js';
+import { FileSystemAPI } from '../FileSystem.js';
 import { EndpointInfo, HttpMethod } from '../types.js';
 
 // Define response wrapper types locally
@@ -15,24 +15,35 @@ export interface ResponseOnError {
 
 export class ServicesGenerator extends BaseGenerator {
   private _generatedServices: Map<string, string> = new Map();
-  
-  generate(): Map<string, string> {
+
+  protected getGeneratorKey(): string {
+    return 'services';
+  }
+
+  protected performGeneration(): Map<string, string> {
+    this.notifyObservers('generation_started', { generator: 'services' });
+    
     const serviceGroups = this.groupEndpointsByTag();
     
     Object.entries(serviceGroups).forEach(([serviceName, endpoints]) => {
       const serviceCode = this.generateServiceClass(serviceName, endpoints);
       this._generatedServices.set(serviceName, serviceCode);
     });
+
+    this.notifyObservers('generation_completed', { 
+      generator: 'services', 
+      count: this._generatedServices.size 
+    });
     
     return this._generatedServices;
   }
-  
-  saveFiles(fs: FileSystemAPI): void {
-    const servicesDir = this.getOutputDirectory('services');
+
+  protected generateFiles(fs: FileSystemAPI): void {
+    const servicesDir = this.getOutputDirectory();
     fs.ensureDirectoryExists(servicesDir);
-    
+
     let indexFileContent = '// Auto-generated services from API spec\n\n';
-    
+
     this._generatedServices.forEach((content, name) => {
       const fileName = `${this.toKebabCase(name)}.ts`;
       const filePath = fs.joinPath(servicesDir, fileName);
@@ -42,8 +53,17 @@ export class ServicesGenerator extends BaseGenerator {
       const exportName = name.charAt(0).toLowerCase() + name.slice(1);
       indexFileContent += `export { ${name}, ${exportName} } from './${this.toKebabCase(name)}';\n`;
     });
-    
+
     this.createIndexFile(servicesDir, indexFileContent, fs);
+  }
+
+  // Keep old public methods for backward compatibility
+  generate(): Map<string, string> {
+    return super.generate();
+  }
+  
+  saveFiles(fs: FileSystemAPI): void {
+    super.saveFiles(fs);
   }
   
   private groupEndpointsByTag(): Record<string, EndpointInfo[]> {
@@ -343,7 +363,7 @@ export const ${instanceName} = new ${className}();
     return successResponse.content['application/json'].schema;
   }
   
-  private getTypeFromSchema(schema: any): string {
+  protected getTypeFromSchema(schema: any): string {
     if (schema.$ref) {
       return this.extractNameFromRef(schema.$ref);
     }

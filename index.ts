@@ -12,9 +12,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 import type { OpenApiSpec } from './src/types.js';
-import { ApiContractBuilderDirector } from './src/core/builder-pattern.js';
-import { CommandInvoker, GenerateCommand, GenerateAllCommand } from './src/core/command-pattern.js';
-import { ServiceLocator } from './src/core/dependency-injection.js';
+import { ApiContractBuilderDirector } from './src/core/BuilderPattern.js';
+import { CommandInvoker, GenerateCommand, GenerateAllCommand } from './src/core/CommandPattern.js';
+import { ServiceLocator } from './src/core/DependencyInjection.js';
 
 /**
  * Displays the current version of the generator
@@ -120,7 +120,7 @@ async function main() {
 
     // Initialize service locator and file system
     const serviceLocator = ServiceLocator.getInstance();
-    const { NodeFileSystem } = await import('./src/file-system.js');
+    const { NodeFileSystem } = await import('./src/FileSystem.js');
     const fileSystem = new NodeFileSystem();
 
     // Set up the options based on the command

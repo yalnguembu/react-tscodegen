@@ -129,3 +129,123 @@ export const TABLE_HEADER_TEMPLATE = `<th className="px-4 py-2">{{headerName}}</
 
 // Template for table row
 export const TABLE_ROW_TEMPLATE = `<td className="px-4 py-2">{{cellValue}}</td>`;
+
+// Template for generating list components for GET method responses
+
+export const LIST_COMPONENT_TEMPLATE = `{{imports}}
+
+export interface {{entityName}}ListProps {
+  items: {{itemType}}[];
+  loading?: boolean;
+  error?: string | null;
+  onEdit?: (item: {{itemType}}) => void;
+  onDelete?: (item: {{itemType}}) => void;
+  onView?: (item: {{itemType}}) => void;
+  onRefresh?: () => void;
+  className?: string;
+  compact?: boolean;
+  showActions?: boolean;
+}
+
+export function {{entityName}}List({
+  items,
+  loading = false,
+  error = null,
+  onEdit,
+  onDelete,
+  onView,
+  onRefresh,
+  className = '',
+  compact = false,
+  showActions = true
+}: {{entityName}}ListProps) {
+  
+  if (loading) {
+    return (
+      <div className={\`{{entityNameLower}}-list loading \${className}\`}>
+        <div className="loading-spinner">
+          <div className="spinner"></div>
+          <p>Loading {{entityNameLower}}...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={\`{{entityNameLower}}-list error \${className}\`}>
+        <div className="error-message">
+          <h3>Error loading {{entityNameLower}}</h3>
+          <p>{error}</p>
+          {onRefresh && (
+            <button onClick={onRefresh} className="btn btn-primary">
+              Try Again
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (!items || items.length === 0) {
+    return (
+      <div className={\`{{entityNameLower}}-list empty \${className}\`}>
+        <div className="empty-state">
+          <h3>No {{entityNameLower}} found</h3>
+          <p>There are no items to display.</p>
+          {onRefresh && (
+            <button onClick={onRefresh} className="btn btn-outline">
+              Refresh
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={\`{{entityNameLower}}-list \${compact ? 'compact' : ''} \${className}\`}>
+      <div className="list-header">
+        <div className="list-info">
+          <h2>{{listTitle}}</h2>
+          <span className="item-count">{items.length} item{items.length !== 1 ? 's' : ''}</span>
+        </div>
+        {onRefresh && (
+          <button onClick={onRefresh} className="btn btn-outline btn-sm">
+            🔄 Refresh
+          </button>
+        )}
+      </div>
+      
+      <div className="list-content">
+        {items.map((item, index) => (
+          <{{cardComponentName}}
+            key={{{keyField}} || index}
+            data={item}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onView={onView}
+            compact={compact}
+            showActions={showActions}
+          />
+        ))}
+      </div>
+      
+      <div className="list-footer">
+        <p className="text-muted">
+          Showing {items.length} {{entityNameLower}}{items.length !== 1 ? 's' : ''}
+        </p>
+      </div>
+    </div>
+  );
+}`;
+
+export const LIST_IMPORTS_TEMPLATE = `import React from 'react';
+import { {{itemType}} } from '../types';
+import { {{cardComponentName}} } from './{{cardComponentFile}}';`;
+
+export const LIST_INDEX_TEMPLATE = `// Auto-generated list components for GET method responses
+
+{{exportStatements}}`;
+
+export const LIST_EXPORT_STATEMENT_TEMPLATE = `export * from './{{fileName}}';`;

@@ -5,17 +5,18 @@ import path from "path"
 import { fileURLToPath } from "url"
 import { dirname } from "path"
 import { load as yamlLoad } from "js-yaml"
-import { ApiContractBuilder } from "./api-contract-builder.js"
-import { NodeFileSystem } from "./file-system.js"
+import SwaggerParser from "@apidevtools/swagger-parser"
+// import { ApiContractBuilder } from "./APIContractBuilder.js"
+import { NodeFileSystem } from "./FileSystem.js"
 import { GeneratorOptions, OpenApiSpec } from "./types.js"
-import { TypesGenerator } from "./generators/types-generator.js"
-import { SchemasGenerator } from "./generators/schemas-generator.js"
-import { ServicesGenerator } from "./generators/services-generator.js"
-import { HooksGenerator } from "./generators/hooks-generator.js"
-import { ComponentsGenerator } from "./generators/components-generator.js"
-import { ViewsGenerator } from "./generators/views-generator.js"
-import { MocksGenerator } from "./generators/mocks-generator.js"
-import { FakesDataGenerator } from "./generators/fakes-data-generator.js"
+import { TypesGenerator } from "./generators/TypesGenerator.js"
+import { SchemasGenerator } from "./generators/SchemasGenerator.js"
+import { ServicesGenerator } from "./generators/ServicesGenerator.js"
+import { HooksGenerator } from "./generators/HooksGenerator.js"
+import { ComponentsGenerator } from "./generators/ComponentsGenerator.js"
+import { ViewsGenerator } from "./generators/ViewsGenerator.js"
+import { MocksGenerator } from "./generators/MocksGenerator.js"
+import { FakesDataGenerator } from "./generators/FakesDataGenerator.js"
 
 // Get the equivalent of __dirname in ESM
 const __filename = fileURLToPath(import.meta.url)
@@ -103,6 +104,7 @@ interface GenerationCounts {
 interface GeneratorInstance {
   generate(): Map<string, any>
   saveFiles(fs: NodeFileSystem): void
+  initializeSpec?(): Promise<void>
 }
 
 // Configuration and utility classes
@@ -147,17 +149,35 @@ class SpecLoader {
         process.exit(1)
       }
 
-      console.log(`Reading specification from: ${resolvedPath}`)
-      const specContent = fs.readFileSync(resolvedPath, "utf8")
+      console.log(`Loading and dereferencing OpenAPI spec from: ${resolvedPath}`)
+        try {
+        // Use swagger-parser to properly parse, validate, and dereference the spec
+        const parsedApi = await SwaggerParser.dereference(resolvedPath)
+        const api = parsedApi as unknown as OpenApiSpec
+        
+        console.log(`✅ Successfully loaded and dereferenced OpenAPI spec`)
+        console.log(`   📋 Title: ${(api as any).info?.title || 'Unknown'}`)
+        console.log(`   🔢 Version: ${(api as any).info?.version || 'Unknown'}`)
+        console.log(`   🛣️  Paths: ${Object.keys(api.paths || {}).length}`)
+        console.log(`   📦 Schemas: ${Object.keys(api.components?.schemas || {}).length}`)
+        
+        return api
+      } catch (parserError) {
+        console.warn(`⚠️  swagger-parser failed: ${parserError}`)
+        console.log(`🔄 Falling back to basic YAML/JSON parsing...`)
+        
+        // Fallback to basic YAML/JSON loading
+        const specContent = fs.readFileSync(resolvedPath, "utf8")
 
-      // Parse based on file extension
-      if (resolvedPath.endsWith(".yaml") || resolvedPath.endsWith(".yml")) {
-        return yamlLoad(specContent) as OpenApiSpec
-      } else {
-        return JSON.parse(specContent) as OpenApiSpec
+        // Parse based on file extension
+        if (resolvedPath.endsWith(".yaml") || resolvedPath.endsWith(".yml")) {
+          return yamlLoad(specContent) as OpenApiSpec
+        } else {
+          return JSON.parse(specContent) as OpenApiSpec
+        }
       }
     } catch (error) {
-      console.error("Error loading or parsing specification:", error)
+      console.error("❌ Error loading or parsing specification:", error)
       process.exit(1)
     }
   }
@@ -257,7 +277,6 @@ class ApiGenerator {
   private logGenerationStep(step: number, title: string): void {
     console.log(`\n--- Step ${step}: ${title}... ---`)
   }
-
   private async generateSingleType(
     type: string,
     spec: OpenApiSpec,
@@ -266,6 +285,11 @@ class ApiGenerator {
     options?: any
   ): Promise<number> {
     const generator = GeneratorFactory.createGenerator(type, spec, outputPath, options)
+    
+    // Initialize spec with proper dereferencing for complex schemas
+    if (generator.initializeSpec) {
+      await generator.initializeSpec();
+    }
     
     // Special handling for hooks generator
     if (type === 'hooks' && generator instanceof HooksGenerator) {
@@ -342,7 +366,7 @@ class ApiGenerator {
     this.logGenerationStep(5, "Generating React Query Hooks")
     counts.hooks = await this.generateSingleType('hooks', spec, outputPath, fs, options)
     console.log(`✓ Generated ${counts.hooks} React Query hooks`)
-
+    
     this.logGenerationStep(6, "Generating React Components")
     const componentOptions = {
       generateForms: options.forms !== undefined ? options.forms : true,
@@ -350,6 +374,12 @@ class ApiGenerator {
     }
     
     const componentsGenerator = GeneratorFactory.createGenerator('components', spec, outputPath, componentOptions)
+    
+    // Initialize spec with proper dereferencing for complex schemas
+    if (componentsGenerator.initializeSpec) {
+      await componentsGenerator.initializeSpec();
+    }
+    
     const generatedComponents = componentsGenerator.generate()
     componentsGenerator.saveFiles(fs)
 
@@ -435,6 +465,9 @@ class ApiGenerator {
       generateForms,
       generateLists,
     })
+
+    // Initialize spec with proper dereferencing for complex schemas
+    await componentsGenerator.initializeSpec();
 
     console.log("Generating React Components...")
     const generated = componentsGenerator.generate()
@@ -531,10 +564,9 @@ class CLISetup {
       .option("-s, --spec <path>", "Path to the OpenAPI specification file (YAML or JSON)", config.spec?.default)
       .option("-o, --outDir <directory>", "Output directory for generated components", config.output?.default)
       .option("--forms", "Generate form components", config.options?.componentsGeneration?.generateForms)
-      .option("--list", "Generate list components", config.options?.componentsGeneration?.generateLists)
-      .action(async (options) => {
+      .option("--list", "Generate list components", config.options?.componentsGeneration?.generateLists)      .action(async (options) => {
         try {
-          await this.apiGenerator.generateSingle('types', options)
+          await this.apiGenerator.generateSingle('components', options)
         } catch (error) {
           console.log(error)
         }

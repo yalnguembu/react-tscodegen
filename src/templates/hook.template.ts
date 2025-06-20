@@ -6,10 +6,10 @@ export const QUERY_HOOK_TEMPLATE = `
 /**
  * Hook for {{methodName}} operation
  */
-export function use{{camelCaseMethodName}}({{params}}options?: { enabled?: boolean }) {
+export function {{methodName}}({{params}}options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: ['{{resourceName}}', '{{methodName}}'{{hasParams}}],
-    queryFn: () => {{serviceName}}.{{methodName}}({{methodParams}}),
+    queryKey: ['{{resourceName}}', '{{serviceMethodName}}'{{hasParams}}],
+    queryFn: () => {{serviceName}}.{{serviceMethodName}}({{methodParams}}),
     ...options
   });
 }
@@ -20,11 +20,11 @@ export const MUTATION_HOOK_TEMPLATE = `
 /**
  * Hook for {{methodName}} operation
  */
-export function use{{camelCaseMethodName}}(options?: { onSuccess?: () => void; onError?: (error: any) => void }) {
+export function {{methodName}}(options?: { onSuccess?: () => void; onError?: (error: any) => void }) {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({{params}}) => {{serviceName}}.{{methodName}}({{methodParams}}),
+    mutationFn: ({{params}}) => {{serviceName}}.{{serviceMethodName}}({{methodParams}}),
     onSuccess: () => {
       // Invalidate related queries after mutation
       queryClient.invalidateQueries({ queryKey: ['{{resourceName}}'] });

@@ -1,6 +1,6 @@
 {
   "name": "react-tscodegen",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "description": "Modern TypeScript/React code generator from OpenAPI specifications with enhanced component generation, data-safe views, and robust OOP architecture",
   "main": "dist/index.js",

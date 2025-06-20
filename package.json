@@ -1,6 +1,6 @@
 {
   "name": "react-tscodegen",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "module",
   "description": "Modern TypeScript/React code generator from OpenAPI specifications with enhanced component generation, data-safe views, and robust OOP architecture",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
     "prerelease": "node --experimental-specifier-resolution=node ./scripts/pre-release-check.js",
     "github-release": "node --experimental-specifier-resolution=node ./scripts/github-release.js",
     "generate:all": "node dist/index.js all --spec api-specification.yaml",
-    "generate:types": "node dist/index.js types --spec api-specification.yaml", 
+    "generate:types": "node dist/index.js types --spec api-specification.yaml",
     "generate:schemas": "node dist/index.js schemas --spec api-specification.yaml",
     "generate:services": "node dist/index.js services --spec api-specification.yaml",
     "generate:hooks": "node dist/index.js hooks --spec api-specification.yaml",
